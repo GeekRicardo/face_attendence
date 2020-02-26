@@ -13,6 +13,7 @@
 from flask import Flask
 # from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
+from flask_cache import Cache
 # from flask_login import LoginManager
 from config import config
 from .utils import wechat_api
@@ -21,10 +22,11 @@ from .utils import wechat_api
 
 # moment = Moment()
 db = SQLAlchemy()
+cache = Cache()
 # pagedown = PageDown()
 
-# face_tools = face_utils_cls()
 wechat = wechat_api()
+# face_tools = face_utils_cls()
 
 
 def create_app(config_name):
@@ -34,6 +36,7 @@ def create_app(config_name):
 
     # moment.init_app(app)
     db.init_app(app)
+    cache.init_app(app)
 
     # @app.before_first_request
     # def init():

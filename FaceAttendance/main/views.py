@@ -13,18 +13,21 @@
 
 from flask import render_template, redirect, request, jsonify, send_from_directory
 
-import os, time
+import os
+import time
 import cv2
 import numpy as np
 from os import environ
 # import tensorflow as tf
 
 from . import main
-from .. import db,  wechat
+from .. import db,  wechat, cache
 from ..models.sign_record import SignRecord
 from ..models.user import UserRole, User
 
-# from settings import *
+from ..utils import encrty_string
+
+import pdb
 
 
 
@@ -62,7 +65,11 @@ def login():
             print('openid:' + sess_dict['openid'], '\nsession_key' + sess_dict['session_key'])
             user = db.session.query(User).filter_by(openid=sess_dict['openid']).first()
             if user:
-                print(user, sess_dict)
+                print('user success ->', user, sess_dict)
+                openid_str = encrty_string(sess_dict['openid'])
+                pdb.set_trace()
+                cache.set(key=openid_str, value=sess_dict['openid'], timeout=3600)
+                
                 return jsonify(sess_dict)
             else:
                 print("未注册")
@@ -73,10 +80,10 @@ def login():
         return jsonify({'errcode': 10, 'errmsg': '未获得code'})
 
 
-@main.route('/getuserinfo/<openid>')
-def get_user_info(openid):
+@main.route('/getuserinfo/<session_key>')
+def get_user_info(session_key):
     """
-    Desc: 登录session_key 有效期间获取用户信息
+    Desc: 登录session_key 有效期间获取用户信息 
         
     Args: 
         :openid openid 
@@ -86,16 +93,23 @@ def get_user_info(openid):
         
     """
     # openid = request.args.get('openid')
-    openid = openid.strip()
-    user = db.session.query(User).filter_by(openid=openid).first()
-    if user:
-        return jsonify({
-            'errcode': 0,
-            'errmsg': "",
-            'user': user
+    session_key = session_key.strip()
+    openid = cache.get(session_key)
+    if openid:
+        user = db.session.query(User).filter_by(openid=openid).first()
+        if user:
+            return jsonify({
+                'errcode': 0,
+                'errmsg': "",
+                'user': user
+                })
+        else:
+            return jsonify({
+                'errcode': 1,
+                'errmsg': "无此用户绑定或openid错误",
             })
     else:
         return jsonify({
-            'errcode': 1,
-            'errmsg': "无此用户绑定或openid错误",
-        })
+                'errcode': 2,
+                'errmsg': "session_key 过期",
+            })
